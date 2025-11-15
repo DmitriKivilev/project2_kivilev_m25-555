@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "project2-kivilev-m25-555"
+version = "0.1.0"
+description = "Primitive database project"
+authors = ["dmitrikivilev <dimon_95.08@mail.ru>"]
+readme = "README.md"
+
+packages = [
+    { include = "src" },
+]
+
+[tool.poetry.scripts]
+project = "src.primitive_db.main:main"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+exclude = ["venv", ".venv", "dist", "__pycache__"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = []
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
