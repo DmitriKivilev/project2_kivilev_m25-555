@@ -8,7 +8,7 @@ import prompt
 import shlex
 from src.primitive_db.core import create_table, drop_table, list_tables
 from src.primitive_db.utils import load_metadata, save_metadata, print_help
-
+from src.primitive_db.core import create_table, drop_table, list_tables, insert_record
 
 def run():
     """
@@ -59,6 +59,25 @@ def run():
                 if len(args) != 2:
                     print("❌ Ошибка: Используйте: drop_table <имя_таблицы>")
                     continue
+            elif command == "insert":
+                if len(args) < 3:
+                    print("❌ Ошибка: Используйте: insert <имя_таблицы> <столбец1=значение> ...")
+                    continue
+                
+                table_name = args[1]
+                values = args[2:]  # Column=value pairs
+                
+                try:
+                    metadata = insert_record(metadata, table_name, values)
+                    save_metadata(metadata_file, metadata)
+                    
+                    # Также сохраняем данные в отдельный файл
+                    from src.primitive_db.utils import save_table_data
+                    table_data = metadata[table_name].get('data', [])
+                    save_table_data(table_name, table_data)
+                    
+                except ValueError as e:
+                    print(f"❌ {e}")
                 
                 table_name = args[1]
                 

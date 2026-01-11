@@ -4,6 +4,7 @@ Utility functions for database operations.
 Working with metadata files and data validation.
 """
 
+import os
 import json
 from typing import Dict, Any, Tuple, Optional
 
@@ -83,5 +84,47 @@ def print_help():
     print("<command> create_table <имя_таблицы> <столбец1:тип> <столбец2:тип> .. - создать таблицу")
     print("<command> list_tables - показать список всех таблиц")
     print("<command> drop_table <имя_таблицы> - удалить таблицу")
+    print("<command> insert <имя_таблицы> <столбец1=значение> ... - добавить запись")  # <-- НОВАЯ СТРОКА
     print("<command> exit - выход из программы")
     print("<command> help - справочная информация\n")
+
+def save_table_data(table_name: str, data: list, data_dir: str = "data") -> None:
+    """
+    Save table data to a separate JSON file.
+    
+    Args:
+        table_name (str): Name of the table
+        data (list): Table data to save
+        data_dir (str): Directory for data files
+    """
+    try:
+        # Create data directory if it doesn't exist
+        os.makedirs(data_dir, exist_ok=True)
+        
+        filepath = os.path.join(data_dir, f"{table_name}.json")
+        with open(filepath, 'w', encoding='utf-8') as file:
+            json.dump(data, file, indent=2, ensure_ascii=False)
+        print(f"💾 Данные таблицы '{table_name}' сохранены в {filepath}")
+    except IOError as e:
+        print(f"❌ Ошибка сохранения данных: {e}")
+
+
+def load_table_data(table_name: str, data_dir: str = "data") -> list:
+    """
+    Load table data from JSON file.
+    
+    Args:
+        table_name (str): Name of the table
+        data_dir (str): Directory for data files
+        
+    Returns:
+        list: Loaded data or empty list if file doesn't exist
+    """
+    try:
+        filepath = os.path.join(data_dir, f"{table_name}.json")
+        if os.path.exists(filepath):
+            with open(filepath, 'r', encoding='utf-8') as file:
+                return json.load(file)
+        return []
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []

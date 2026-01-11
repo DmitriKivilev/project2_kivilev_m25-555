@@ -2,7 +2,7 @@ install:
 	poetry install
 
 project:
-	poetry run project
+	poetry run python src/primitive_db/main.py
 
 build:
 	poetry build
