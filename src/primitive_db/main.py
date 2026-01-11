@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from src.primitive_db.engine import welcome
+from src.primitive_db.engine import run
 
 
 def main():
-    welcome()
+    """Main entry point for the database application."""
+    run()
 
 
 if __name__ == "__main__":
