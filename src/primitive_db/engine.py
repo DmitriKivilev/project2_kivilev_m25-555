@@ -6,9 +6,9 @@ The main loop of our database application.
 
 import prompt
 import shlex
-from src.primitive_db.core import create_table, drop_table, list_tables
-from src.primitive_db.utils import load_metadata, save_metadata, print_help
 from src.primitive_db.core import create_table, drop_table, list_tables, insert_record
+from src.primitive_db.utils import load_metadata, save_metadata, print_help
+
 
 def run():
     """
@@ -59,6 +59,15 @@ def run():
                 if len(args) != 2:
                     print("❌ Ошибка: Используйте: drop_table <имя_таблицы>")
                     continue
+                
+                table_name = args[1]
+                
+                try:
+                    metadata = drop_table(metadata, table_name)
+                    save_metadata(metadata_file, metadata)
+                except ValueError as e:
+                    print(f"❌ {e}")
+                    
             elif command == "insert":
                 if len(args) < 3:
                     print("❌ Ошибка: Используйте: insert <имя_таблицы> <столбец1=значение> ...")
@@ -76,14 +85,6 @@ def run():
                     table_data = metadata[table_name].get('data', [])
                     save_table_data(table_name, table_data)
                     
-                except ValueError as e:
-                    print(f"❌ {e}")
-                
-                table_name = args[1]
-                
-                try:
-                    metadata = drop_table(metadata, table_name)
-                    save_metadata(metadata_file, metadata)
                 except ValueError as e:
                     print(f"❌ {e}")
                     
