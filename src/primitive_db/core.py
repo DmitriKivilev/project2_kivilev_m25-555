@@ -1,16 +1,43 @@
 #!/usr/bin/env python3
-from typing import Dict, Any, List
+import re
+from typing import Any, Dict, List
+
+from src.primitive_db.constants import (
+    AUTO_ID_COLUMN,
+    COMPARISON_OPERATORS,
+    ERROR_COLUMN_NOT_EXISTS,
+    ERROR_INVALID_FORMAT,
+    ERROR_INVALID_TYPE,
+    ERROR_TABLE_EXISTS,
+    ERROR_TABLE_NOT_EXISTS,
+    FALSE_VALUES,
+    TRUE_VALUES,
+)
+from src.primitive_db.decorators import (
+    cache_results,
+    confirm_action,
+    handle_db_errors,
+    log_time,
+)
 from src.primitive_db.utils import validate_column_definition
 
 
-def create_table(metadata: Dict[str, Any], table_name: str, columns: List[str]) -> Dict[str, Any]:
+@handle_db_errors
+@log_time
+def create_table(
+    metadata: Dict[str, Any], table_name: str, columns: List[str]
+) -> Dict[str, Any]:
+    """Создает новую таблицу с указанными столбцами"""
     if table_name in metadata:
-        raise ValueError(f'Таблица "{table_name}" уже существует.')
+        raise ValueError(ERROR_TABLE_EXISTS.format(table_name))
     
     validated_columns = []
     
-    validated_columns.append(('ID', 'int'))
-    print("Автоматически добавлен столбец ID:int")
+    validated_columns.append(AUTO_ID_COLUMN)
+    print(
+        f"Автоматически добавлен столбец "
+        f"{AUTO_ID_COLUMN[0]}:{AUTO_ID_COLUMN[1]}"
+    )
     
     for column_def in columns:
         result = validate_column_definition(column_def)
@@ -22,23 +49,41 @@ def create_table(metadata: Dict[str, Any], table_name: str, columns: List[str]) 
     
     metadata[table_name] = {
         'columns': validated_columns,
-        'data': []  # Will store actual data records later
+        'data': []
     }
     
-    column_list = ', '.join([f'{name}:{type}' for name, type in validated_columns])
-    print(f' Таблица "{table_name}" успешно создана со столбцами: {column_list}')
-    return metadata
-
-def drop_table(metadata: Dict[str, Any], table_name: str) -> Dict[str, Any]:
-    if table_name not in metadata:
-        raise ValueError(f'Таблица "{table_name}" не существует.')
+    column_list = ', '.join(
+        [f'{name}:{type}' for name, type in validated_columns]
+    )
+    print(
+        f'Таблица "{table_name}" успешно создана '
+        f'со столбцами: {column_list}'
+    )
     
-    # Remove table from metadata
-    del metadata[table_name]
-    print(f' Таблица "{table_name}" успешно удалена.')
     return metadata
 
+
+@handle_db_errors
+@confirm_action("удалить таблицу")
+@log_time
+def drop_table(
+    metadata: Dict[str, Any], table_name: str
+) -> Dict[str, Any]:
+    """Удаляет таблицу из базы данных."""
+
+    if table_name not in metadata:
+        raise ValueError(ERROR_TABLE_NOT_EXISTS.format(table_name))
+    
+    del metadata[table_name]
+    print(f'Таблица "{table_name}" успешно удалена.')
+    
+    return metadata
+
+
+@log_time
 def list_tables(metadata: Dict[str, Any]) -> None:
+    """Выводит список всех таблиц в базе данных."""
+
     if not metadata:
         print("В базе данных нет таблиц.")
         return
@@ -48,27 +93,39 @@ def list_tables(metadata: Dict[str, Any]) -> None:
         print(f"- {table_name}")
 
 
-def get_table_info(metadata: Dict[str, Any], table_name: str) -> Dict[str, Any] | None:
+def get_table_info(
+    metadata: Dict[str, Any], table_name: str
+) -> Dict[str, Any] | None:
+    """Получает информацию о таблице."""
+
     return metadata.get(table_name)
 
 
-def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) -> Dict[str, Any]:
+@handle_db_errors
+@log_time
+@cache_results(max_size=50)
+def insert_record(
+    metadata: Dict[str, Any], table_name: str, values: List[str]
+) -> Dict[str, Any]:
+    """Добавляет новую запись в таблицу."""
+
     if table_name not in metadata:
-        raise ValueError(f'Таблица "{table_name}" не существует.')    
-    table_info = metadata[table_name]
-    columns = table_info['columns'][1:]  # Skip ID column (it's auto-generated)
+        raise ValueError(ERROR_TABLE_NOT_EXISTS.format(table_name))
     
-    # Parse values
+    table_info = metadata[table_name]
+    columns = table_info['columns'][1:]  # Пропускаем ID столбец
+    
     record = {}
     for value_str in values:
         if '=' not in value_str:
-            raise ValueError(f'Некорректный формат значения: "{value_str}". Используйте "столбец=значение"')
+            raise ValueError(
+                ERROR_INVALID_FORMAT.format(value_str, "столбец=значение")
+            )
         
         col_name, col_value = value_str.split('=', 1)
         col_name = col_name.strip()
         col_value = col_value.strip()
         
-        # Find column definition
         column_def = None
         for col_def_name, col_type in columns:
             if col_def_name == col_name:
@@ -76,7 +133,9 @@ def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) 
                 break
         
         if not column_def:
-            raise ValueError(f'Столбец "{col_name}" не существует в таблице "{table_name}"')
+            raise ValueError(
+                ERROR_COLUMN_NOT_EXISTS.format(col_name, table_name)
+            )
         
         col_name, col_type = column_def
         try:
@@ -84,26 +143,33 @@ def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) 
                 record[col_name] = int(col_value)
             elif col_type == 'bool':
                 col_value_lower = col_value.lower()
-                if col_value_lower in ['true', '1', 'yes', 'да']:
+                if col_value_lower in TRUE_VALUES:
                     record[col_name] = True
-                elif col_value_lower in ['false', '0', 'no', 'нет']:
+                elif col_value_lower in FALSE_VALUES:
                     record[col_name] = False
                 else:
-                    raise ValueError(f'Неверное значение для bool: "{col_value}"')
+                    raise ValueError(
+                        f'Неверное значение для bool: "{col_value}"'
+                    )
             elif col_type == 'str':
-                if (col_value.startswith('"') and col_value.endswith('"')) or \
-                   (col_value.startswith("'") and col_value.endswith("'")):
+                if (col_value.startswith('"') and col_value.endswith('"')) \
+                   or (col_value.startswith("'") and col_value.endswith("'")):
                     record[col_name] = col_value[1:-1]
                 else:
                     record[col_name] = col_value
             else:
-                raise ValueError(f'Неизвестный тип данных: {col_type}')
-        except ValueError as e:
-            raise ValueError(f'Неверное значение для столбца "{col_name}" (тип {col_type}): "{col_value}"')
+                raise ValueError(ERROR_INVALID_TYPE.format(col_type))
+        except ValueError:
+            raise ValueError(
+                f'Неверное значение для столбца "{col_name}" '
+                f'(тип {col_type}): "{col_value}"'
+            )
     
     for col_name, col_type in columns:
         if col_name not in record:
-            raise ValueError(f'Отсутствует значение для обязательного столбца: "{col_name}"')
+            raise ValueError(
+                f'Отсутствует значение для обязательного столбца: "{col_name}"'
+            )
     
     existing_data = table_info.get('data', [])
     if existing_data:
@@ -124,9 +190,17 @@ def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) 
     print(f'Запись добавлена в таблицу "{table_name}" с ID={new_id}')
     return metadata
 
-def select_records(metadata: Dict[str, Any], table_name: str, condition: str = None) -> List[Dict]:
+
+@handle_db_errors
+@log_time
+@cache_results(max_size=100)
+def select_records(
+    metadata: Dict[str, Any], table_name: str, condition: str = None
+) -> List[Dict]:
+    """Выбирает записи из таблицы с опциональным условием."""
+
     if table_name not in metadata:
-        raise ValueError(f'Таблица "{table_name}" не существует.')
+        raise ValueError(ERROR_TABLE_NOT_EXISTS.format(table_name))
     
     table_info = metadata[table_name]
     records = table_info.get('data', [])
@@ -134,17 +208,23 @@ def select_records(metadata: Dict[str, Any], table_name: str, condition: str = N
     if not condition:
         return records
     
-    import re
-    
     match = re.match(r'(\w+)([<>=!]+)(.+)', condition)
     if not match:
-        raise ValueError(f'Некорректное условие: "{condition}". Используйте "столбец оператор значение"')
+        raise ValueError(
+            f'Некорректное условие: "{condition}". '
+            f'Используйте "столбец оператор значение"'
+        )
     
     col_name, operator, value_str = match.groups()
     
+    if operator not in COMPARISON_OPERATORS:
+        raise ValueError(f'Неподдерживаемый оператор: "{operator}"')
+    
     column_types = {name: type for name, type in table_info['columns']}
     if col_name not in column_types:
-        raise ValueError(f'Столбец "{col_name}" не существует в таблице "{table_name}"')
+        raise ValueError(
+            ERROR_COLUMN_NOT_EXISTS.format(col_name, table_name)
+        )
     
     col_type = column_types[col_name]
     
@@ -153,18 +233,20 @@ def select_records(metadata: Dict[str, Any], table_name: str, condition: str = N
             value = int(value_str)
         elif col_type == 'bool':
             value_lower = value_str.lower()
-            value = value_lower in ['true', '1', 'yes', 'да']
+            value = value_lower in TRUE_VALUES
         elif col_type == 'str':
-            # Remove quotes if present
-            if (value_str.startswith('"') and value_str.endswith('"')) or \
-               (value_str.startswith("'") and value_str.endswith("'")):
+            if (value_str.startswith('"') and value_str.endswith('"')) \
+               or (value_str.startswith("'") and value_str.endswith("'")):
                 value = value_str[1:-1]
             else:
                 value = value_str
         else:
-            raise ValueError(f'Неизвестный тип данных: {col_type}')
+            raise ValueError(ERROR_INVALID_TYPE.format(col_type))
     except ValueError:
-        raise ValueError(f'Неверное значение для столбца "{col_name}" (тип {col_type}): "{value_str}"')
+        raise ValueError(
+            f'Неверное значение для столбца "{col_name}" '
+            f'(тип {col_type}): "{value_str}"'
+        )
     
     filtered_records = []
     for record in records:
@@ -186,23 +268,30 @@ def select_records(metadata: Dict[str, Any], table_name: str, condition: str = N
             match_condition = record_value == value
         elif operator == '!=':
             match_condition = record_value != value
-        else:
-            raise ValueError(f'Неподдерживаемый оператор: "{operator}"')
         
         if match_condition:
             filtered_records.append(record)
     
     return filtered_records
-    return metadata
-def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, where_clause: str = None) -> Dict[str, Any]:
+
+
+@handle_db_errors
+@confirm_action("обновить записи")
+@log_time
+def update_records(
+    metadata: Dict[str, Any], table_name: str, 
+    set_clause: str, where_clause: str = None
+) -> Dict[str, Any]:
+    """Обновляет записи в таблице."""
+
     if table_name not in metadata:
-        raise ValueError(f'Таблица "{table_name}" не существует.')
+        raise ValueError(ERROR_TABLE_NOT_EXISTS.format(table_name))
     
     table_info = metadata[table_name]
     records = table_info.get('data', [])
     
     if not records:
-        print(f"️ Таблица '{table_name}' пуста, нечего обновлять")
+        print(f"Таблица '{table_name}' пуста, нечего обновлять")
         return metadata
     
     set_updates = {}
@@ -210,7 +299,9 @@ def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, w
     
     for set_part in set_parts:
         if '=' not in set_part:
-            raise ValueError(f'Некорректный SET: "{set_part}". Используйте "столбец=значение"')
+            raise ValueError(
+                ERROR_INVALID_FORMAT.format(set_part, "столбец=значение")
+            )
         
         col_name, new_value_str = set_part.split('=', 1)
         col_name = col_name.strip()
@@ -218,7 +309,9 @@ def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, w
         
         column_types = {name: type for name, type in table_info['columns']}
         if col_name not in column_types:
-            raise ValueError(f'Столбец "{col_name}" не существует в таблице "{table_name}"')
+            raise ValueError(
+                ERROR_COLUMN_NOT_EXISTS.format(col_name, table_name)
+            )
         
         col_type = column_types[col_name]
         
@@ -227,24 +320,27 @@ def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, w
                 set_updates[col_name] = int(new_value_str)
             elif col_type == 'bool':
                 value_lower = new_value_str.lower()
-                set_updates[col_name] = value_lower in ['true', '1', 'yes', 'да']
+                set_updates[col_name] = value_lower in TRUE_VALUES
             elif col_type == 'str':
-                # Remove quotes if present
-                if (new_value_str.startswith('"') and new_value_str.endswith('"')) or \
-                   (new_value_str.startswith("'") and new_value_str.endswith("'")):
+                if (new_value_str.startswith('"') 
+                    and new_value_str.endswith('"')) \
+                   or (new_value_str.startswith("'") 
+                       and new_value_str.endswith("'")):
                     set_updates[col_name] = new_value_str[1:-1]
                 else:
                     set_updates[col_name] = new_value_str
             else:
-                raise ValueError(f'Неизвестный тип данных: {col_type}')
+                raise ValueError(ERROR_INVALID_TYPE.format(col_type))
         except ValueError:
-            raise ValueError(f'Неверное значение для столбца "{col_name}" (тип {col_type}): "{new_value_str}"')
+            raise ValueError(
+                f'Неверное значение для столбца "{col_name}" '
+                f'(тип {col_type}): "{new_value_str}"'
+            )
     
     def record_matches(record: Dict, condition: str) -> bool:
         if not condition:
             return True
         
-        import re
         match = re.match(r'(\w+)([<>=!]+)(.+)', condition)
         if not match:
             raise ValueError(f'Некорректное условие WHERE: "{condition}"')
@@ -263,10 +359,10 @@ def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, w
                 value = int(value_str)
             elif col_type == 'bool':
                 value_lower = value_str.lower()
-                value = value_lower in ['true', '1', 'yes', 'да']
+                value = value_lower in TRUE_VALUES
             elif col_type == 'str':
-                if (value_str.startswith('"') and value_str.endswith('"')) or \
-                   (value_str.startswith("'") and value_str.endswith("'")):
+                if (value_str.startswith('"') and value_str.endswith('"')) \
+                   or (value_str.startswith("'") and value_str.endswith("'")):
                     value = value_str[1:-1]
                 else:
                     value = value_str
@@ -302,15 +398,24 @@ def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, w
     metadata[table_name] = table_info
     
     if updated_count > 0:
-        print(f" Обновлено {updated_count} записей в таблице '{table_name}'")
+        print(f"Обновлено {updated_count} записей в таблице '{table_name}'")
     else:
-        print(f" Не найдено записей для обновления в таблице '{table_name}'")
+        print(f"Не найдено записей для обновления в таблице '{table_name}'")
     
     return metadata
 
-def delete_records(metadata: Dict[str, Any], table_name: str, where_clause: str = None) -> Dict[str, Any]:
+
+@handle_db_errors
+@confirm_action("удалить записи")
+@log_time
+def delete_records(
+    metadata: Dict[str, Any], table_name: str, 
+    where_clause: str = None
+) -> Dict[str, Any]:
+    """Удаляет записи из таблицы."""
+
     if table_name not in metadata:
-        raise ValueError(f'Таблица "{table_name}" не существует.')
+        raise ValueError(ERROR_TABLE_NOT_EXISTS.format(table_name))
     
     table_info = metadata[table_name]
     records = table_info.get('data', [])
@@ -325,17 +430,20 @@ def delete_records(metadata: Dict[str, Any], table_name: str, where_clause: str 
         print(f"Удалены все записи из таблицы '{table_name}'")
         return metadata
     
-    import re
-    
     match = re.match(r'(\w+)([<>=!]+)(.+)', where_clause)
     if not match:
-        raise ValueError(f'Некорректное условие: "{where_clause}". Используйте "столбец оператор значение"')
+        raise ValueError(
+            f'Некорректное условие: "{where_clause}". '
+            f'Используйте "столбец оператор значение"'
+        )
     
     col_name, operator, value_str = match.groups()
     
     column_types = {name: type for name, type in table_info['columns']}
     if col_name not in column_types:
-        raise ValueError(f'Столбец "{col_name}" не существует в таблице "{table_name}"')
+        raise ValueError(
+            ERROR_COLUMN_NOT_EXISTS.format(col_name, table_name)
+        )
     
     col_type = column_types[col_name]
     
@@ -344,17 +452,20 @@ def delete_records(metadata: Dict[str, Any], table_name: str, where_clause: str 
             value = int(value_str)
         elif col_type == 'bool':
             value_lower = value_str.lower()
-            value = value_lower in ['true', '1', 'yes', 'да']
+            value = value_lower in TRUE_VALUES
         elif col_type == 'str':
-            if (value_str.startswith('"') and value_str.endswith('"')) or \
-               (value_str.startswith("'") and value_str.endswith("'")):
+            if (value_str.startswith('"') and value_str.endswith('"')) \
+               or (value_str.startswith("'") and value_str.endswith("'")):
                 value = value_str[1:-1]
             else:
                 value = value_str
         else:
-            raise ValueError(f'Неизвестный тип данных: {col_type}')
+            raise ValueError(ERROR_INVALID_TYPE.format(col_type))
     except ValueError:
-        raise ValueError(f'Неверное значение для столбца "{col_name}" (тип {col_type}): "{value_str}"')
+        raise ValueError(
+            f'Неверное значение для столбца "{col_name}" '
+            f'(тип {col_type}): "{value_str}"'
+        )
     
     def record_matches(record: Dict) -> bool:
         if col_name not in record:
@@ -378,7 +489,9 @@ def delete_records(metadata: Dict[str, Any], table_name: str, where_clause: str 
         return False
     
     initial_count = len(records)
-    filtered_records = [record for record in records if not record_matches(record)]
+    filtered_records = [
+        record for record in records if not record_matches(record)
+    ]
     deleted_count = initial_count - len(filtered_records)
     
     table_info['data'] = filtered_records

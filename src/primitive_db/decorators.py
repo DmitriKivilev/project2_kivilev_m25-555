@@ -3,8 +3,8 @@
 Декораторы для базы данных.
 """
 import time
-from typing import Callable, Any
 from functools import wraps
+from typing import Any, Callable
 
 
 def handle_db_errors(func: Callable) -> Callable:
@@ -32,7 +32,9 @@ def confirm_action(action_description: str) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             import prompt
-            answer = prompt.string(f"Вы уверены, что хотите {action_description}? (yes/no): ")
+            answer = prompt.string(
+                f"Вы уверены, что хотите {action_description}? (yes/no): "
+            )
             
             if answer.lower() in ['yes', 'y', 'да', 'д']:
                 return func(*args, **kwargs)
@@ -54,7 +56,10 @@ def log_time(func: Callable) -> Callable:
         end_time = time.time()
         
         execution_time = end_time - start_time
-        print(f"️ Функция '{func.__name__}' выполнилась за {execution_time:.4f} секунд")
+        print(
+            f"️ Функция '{func.__name__}' "
+            f"выполнилась за {execution_time:.4f} секунд"
+        )
         
         return result
     return wrapper
@@ -62,7 +67,7 @@ def log_time(func: Callable) -> Callable:
 
 def cache_results(max_size: int = 100) -> Callable:
     """
-    Декоратор для кэширования результатов функций..
+    Декоратор для кэширования результатов функций.
     """
     def decorator(func: Callable) -> Callable:
         cache = {}
@@ -70,7 +75,7 @@ def cache_results(max_size: int = 100) -> Callable:
         
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
-            # Создаем ключ кэш
+            # Создаем ключ кэша
             cache_key = (args, tuple(kwargs.items()))
             
             if cache_key in cache:
@@ -79,25 +84,25 @@ def cache_results(max_size: int = 100) -> Callable:
             
             result = func(*args, **kwargs)
             
-            # в кэш
+            # Добавляем в кэш
             cache[cache_key] = result
             cache_keys.append(cache_key)
             
-            # ограничение для размера кэша
+            # Ограничение для размера кэша
             if len(cache_keys) > max_size:
                 oldest_key = cache_keys.pop(0)
                 del cache[oldest_key]
             
             return result
         
-        # управление кэшом
+        # Управление кэшом
         def clear_cache():
             """Очистить кэш."""
             cache.clear()
             cache_keys.clear()
         
         def get_cache_size():
-            """текущий размер кэша."""
+            """Текущий размер кэша."""
             return len(cache)
         
         wrapper.clear_cache = clear_cache
