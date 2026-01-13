@@ -1,60 +1,36 @@
 {
-  "name": {
+  "list": {
     "columns": [
       [
         "ID",
-        "int"
-      ],
-      [
-        "age",
-        "int"
-      ],
-      [
-        "A",
-        "str"
-      ]
-    ],
-    "data": [
-      {
-        "ID": 1,
-        "age": 9,
-        "A": "Nan"
-      }
-    ]
-  },
-  "rename": {
-    "columns": [
-      [
-        "ID",
-        "int"
-      ],
-      [
-        "age",
-        "int"
-      ]
-    ],
-    "data": [
-      {
-        "ID": 1,
-        "age": 100
-      }
-    ]
-  },
-  "name_2": {
-    "columns": [
-      [
-        "ID",
-        "int"
-      ],
-      [
-        "age",
         "int"
       ],
       [
         "name",
         "str"
+      ],
+      [
+        "age",
+        "int"
+      ],
+      [
+        "sex",
+        "bool"
       ]
     ],
-    "data": []
+    "data": [
+      {
+        "ID": 1,
+        "name": "dima",
+        "age": 20,
+        "sex": false
+      },
+      {
+        "ID": 2,
+        "name": "lika",
+        "age": 20,
+        "sex": true
+      }
+    ]
   }
 }

@@ -59,7 +59,7 @@ def print_help() -> None:
     print("Для манипуляций используйте функции:")
     print(
         "create_table <назовите таблицу> <столбец:тип> <столбец2:тип> и тд. "
-        "- создать таблицу(типы(bool,int или str))"
+        "- создать таблицу(типы(bool(true, 1, yes, да),int или str))"
     )
     print("list_tables - показать список всех таблиц")
     print(
@@ -68,7 +68,7 @@ def print_help() -> None:
     )
     print("insert <имя_таблицы> <столбец=значение> и тд - добавить запись")
     print(
-        "select <имя_таблицы> [where условие(><=)] - показать записи"
+        "select <имя_таблицы> [where условие(><==)] - показать записи"
     )
     print(
         "update <таблица> set <столбец=значение> "
@@ -76,7 +76,7 @@ def print_help() -> None:
     )
     print(
         "Например: update users set age=26 или  "
-        "update users set score=90 where name='John'"
+        "update users set score=90 where name=='John'"
     )
     print("delete <таблица> [where условие] - удалить записи")
     print("Например: delete users, delete users where age<18")

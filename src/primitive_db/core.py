@@ -193,7 +193,6 @@ def insert_record(
 
 @handle_db_errors
 @log_time
-@cache_results(max_size=100)
 def select_records(
     metadata: Dict[str, Any], table_name: str, condition: str = None
 ) -> List[Dict]:

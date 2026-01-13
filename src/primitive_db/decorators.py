@@ -2,6 +2,7 @@
 """
 Декораторы для базы данных.
 """
+import json
 import time
 from functools import wraps
 from typing import Any, Callable
@@ -40,10 +41,12 @@ def confirm_action(action_description: str) -> Callable:
                 return func(*args, **kwargs)
             else:
                 print(" Действие отменено.")
+                # Возвращаем метаданные без изменений
+                if args:
+                    return args[0]  # первый аргумент — это metadata
                 return None
         return wrapper
     return decorator
-
 
 def log_time(func: Callable) -> Callable:
     """
@@ -75,8 +78,11 @@ def cache_results(max_size: int = 100) -> Callable:
         
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
-            # Создаем ключ кэша
-            cache_key = (args, tuple(kwargs.items()))
+            # Создаем сериализуемый ключ кэша
+            try:
+                cache_key = json.dumps((args, kwargs), sort_keys=True, default=str)
+            except:
+                cache_key = str((args, kwargs))
             
             if cache_key in cache:
                 print(f"Результат взят из кэша (функция: {func.__name__})")
