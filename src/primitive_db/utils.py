@@ -5,6 +5,8 @@ from typing import Dict, Any, Tuple, Optional
 from typing import Dict, Any, Tuple, Optional, List
 
 def load_metadata(filepath: str = "db_meta.json") -> Dict[str, Any]:
+""" загружаем метаданные из json
+"""
     try:
         with open(filepath, 'r', encoding='utf-8') as file:
             return json.load(file)
@@ -17,6 +19,8 @@ def load_metadata(filepath: str = "db_meta.json") -> Dict[str, Any]:
 
 
 def save_metadata(filepath: str, data: Dict[str, Any]) -> None:
+""" сохраняем в json
+"""
     try:
         with open(filepath, 'w', encoding='utf-8') as file:
             json.dump(data, file, indent=2, ensure_ascii=False)
@@ -26,6 +30,8 @@ def save_metadata(filepath: str, data: Dict[str, Any]) -> None:
 
 
 def validate_column_definition(column_def: str) -> Optional[Tuple[str, str]]:
+"""проверяет корректность имя:тип
+"""
     if ':' not in column_def:
         print(f"Invalid column format: '{column_def}'. Use 'name:type'")
         return None
@@ -45,6 +51,8 @@ def validate_column_definition(column_def: str) -> Optional[Tuple[str, str]]:
     return (name, col_type)
 
 def print_help():
+""" выводит основную информацию для помощи юзеру
+"""
     print("\n***Как работать с таблицей***")
     print("Для манипуляций используйте функции:")
     print("create_table <назовите таблицу> <столбец:тип> <столбец2:тип> и тд. - создать таблицу(типы(bool,int или str))")
@@ -60,6 +68,8 @@ def print_help():
     print("help - справочная информация\n")
 
 def save_table_data(table_name: str, data: list, data_dir: str = "data") -> None:
+"""сохраняет актуальные данные таблицы в json
+"""
     try:
         # Create data directory if it doesn't exist
         os.makedirs(data_dir, exist_ok=True)
@@ -73,6 +83,8 @@ def save_table_data(table_name: str, data: list, data_dir: str = "data") -> None
 
 
 def load_table_data(table_name: str, data_dir: str = "data") -> list:
+""" загружает из json данные таблиц
+"""
     try:
         filepath = os.path.join(data_dir, f"{table_name}.json")
         if os.path.exists(filepath):
@@ -82,6 +94,8 @@ def load_table_data(table_name: str, data_dir: str = "data") -> list:
     except (FileNotFoundError, json.JSONDecodeError):
         return []
 def pretty_print_table(records: List[Dict], table_name: str) -> None:
+""" для вывода таблицы в виде тоблицы
+"""
     if not records:
         print(f"Таблица '{table_name}' пуста")
         return
