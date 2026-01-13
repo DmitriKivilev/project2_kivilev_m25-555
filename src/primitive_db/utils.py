@@ -45,17 +45,19 @@ def validate_column_definition(column_def: str) -> Optional[Tuple[str, str]]:
     return (name, col_type)
 
 def print_help():
-    print("\n***Процесс работы с таблицей***")
-    print("Функции:")
-    print("<command> create_table <имя_таблицы> <столбец1:тип> <столбец2:тип> .. - создать таблицу")
-    print("<command> list_tables - показать список всех таблиц")
-    print("<command> drop_table <имя_таблицы> - удалить таблицу")
-    print("<command> insert <имя_таблицы> <столбец1=значение> ... - добавить запись")
-    print("<command> select <имя_таблицы> [where условие] - показать записи")
-    print("<command> update <таблица> set <столбец=значение> [where условие] - обновить записи")
-    print("  Примеры: update users set age=26, update users set score=90 where name='John'")
-    print("<command> exit - выход из программы")
-    print("<command> help - справочная информация\n")
+    print("\n***Как работать с таблицей***")
+    print("Для манипуляций используйте функции:")
+    print("create_table <назовите таблицу> <столбец:тип> <столбец2:тип> и тд. - создать таблицу(типы(bool,int или str))")
+    print("list_tables - показать список всех таблиц")
+    print("drop_table <введите имя таблцы которую хотите удалить> - удалить таблицу")
+    print("insert <имя_таблицы> <столбец=значение> и тд - добавить запись")
+    print("select <имя_таблицы> [where условие(><=)] - показать записи")
+    print("update <таблица> set <столбец=значение> [where условие] - обновить записи")
+    print("Например: update users set age=26 или  update users set score=90 where name='John'")
+    print("delete <таблица> [where условие] - удалить записи")
+    print("Например: delete users, delete users where age<18")
+    print("exit - выход из программы")
+    print("help - справочная информация\n")
 
 def save_table_data(table_name: str, data: list, data_dir: str = "data") -> None:
     try:

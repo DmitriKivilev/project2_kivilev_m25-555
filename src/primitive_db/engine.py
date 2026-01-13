@@ -3,7 +3,7 @@
 
 import prompt
 import shlex
-from src.primitive_db.core import create_table, drop_table, list_tables, insert_record, select_records, update_records
+from src.primitive_db.core import create_table, drop_table, list_tables, insert_record, select_records, update_records, delete_records
 from src.primitive_db.utils import load_metadata, save_metadata, print_help, pretty_print_table
 
 
@@ -138,7 +138,31 @@ def run():
                     
                 except ValueError as e:
                     print(f"{e}")
+            
+            elif command == "delete":
+                if len(args) < 2:
+                    print("Ошибка: Используйте: delete <таблица> [where условие]")
+                    continue
                 
+                table_name = args[1]
+                where_clause = None
+                
+                if len(args) >= 4 and args[2].lower() == "where":
+                    where_clause = args[3]
+                elif len(args) >= 3:
+                    where_clause = args[2]
+                
+                try:
+                    metadata = delete_records(metadata, table_name, where_clause)
+                    save_metadata(metadata_file, metadata)
+                    
+                    from src.primitive_db.utils import save_table_data
+                    table_data = metadata[table_name].get('data', [])
+                    save_table_data(table_name, table_data)
+                    
+                except ValueError as e:
+                    print(f"{e}")
+    
             else:
                 print(f"Функции '{command}' нет. Попробуйте снова.")
                 

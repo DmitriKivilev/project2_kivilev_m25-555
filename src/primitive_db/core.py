@@ -78,7 +78,6 @@ def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) 
         if not column_def:
             raise ValueError(f'Столбец "{col_name}" не существует в таблице "{table_name}"')
         
-        # Validate and convert value based on type
         col_name, col_type = column_def
         try:
             if col_type == 'int':
@@ -102,12 +101,10 @@ def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) 
         except ValueError as e:
             raise ValueError(f'Неверное значение для столбца "{col_name}" (тип {col_type}): "{col_value}"')
     
-    # Check if all required columns are provided
     for col_name, col_type in columns:
         if col_name not in record:
             raise ValueError(f'Отсутствует значение для обязательного столбца: "{col_name}"')
     
-    # Generate ID (auto-increment)
     existing_data = table_info.get('data', [])
     if existing_data:
         last_id = max([r.get('ID', 0) for r in existing_data])
@@ -115,11 +112,9 @@ def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) 
     else:
         new_id = 1
     
-    # Create complete record with ID
     complete_record = {'ID': new_id}
     complete_record.update(record)
     
-    # Add to data
     if 'data' not in table_info:
         table_info['data'] = []
     
@@ -259,7 +254,6 @@ def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, w
         if col_name not in record:
             return False
         
-        # Get column type
         col_type = column_types.get(col_name)
         if not col_type:
             return False
@@ -311,5 +305,88 @@ def update_records(metadata: Dict[str, Any], table_name: str, set_clause: str, w
         print(f" Обновлено {updated_count} записей в таблице '{table_name}'")
     else:
         print(f" Не найдено записей для обновления в таблице '{table_name}'")
+    
+    return metadata
+
+def delete_records(metadata: Dict[str, Any], table_name: str, where_clause: str = None) -> Dict[str, Any]:
+    if table_name not in metadata:
+        raise ValueError(f'Таблица "{table_name}" не существует.')
+    
+    table_info = metadata[table_name]
+    records = table_info.get('data', [])
+    
+    if not records:
+        print(f"Таблица '{table_name}' уже пуста")
+        return metadata
+    
+    if not where_clause:
+        table_info['data'] = []
+        metadata[table_name] = table_info
+        print(f"Удалены все записи из таблицы '{table_name}'")
+        return metadata
+    
+    import re
+    
+    match = re.match(r'(\w+)([<>=!]+)(.+)', where_clause)
+    if not match:
+        raise ValueError(f'Некорректное условие: "{where_clause}". Используйте "столбец оператор значение"')
+    
+    col_name, operator, value_str = match.groups()
+    
+    column_types = {name: type for name, type in table_info['columns']}
+    if col_name not in column_types:
+        raise ValueError(f'Столбец "{col_name}" не существует в таблице "{table_name}"')
+    
+    col_type = column_types[col_name]
+    
+    try:
+        if col_type == 'int':
+            value = int(value_str)
+        elif col_type == 'bool':
+            value_lower = value_str.lower()
+            value = value_lower in ['true', '1', 'yes', 'да']
+        elif col_type == 'str':
+            if (value_str.startswith('"') and value_str.endswith('"')) or \
+               (value_str.startswith("'") and value_str.endswith("'")):
+                value = value_str[1:-1]
+            else:
+                value = value_str
+        else:
+            raise ValueError(f'Неизвестный тип данных: {col_type}')
+    except ValueError:
+        raise ValueError(f'Неверное значение для столбца "{col_name}" (тип {col_type}): "{value_str}"')
+    
+    def record_matches(record: Dict) -> bool:
+        if col_name not in record:
+            return False
+        
+        record_value = record[col_name]
+        
+        if operator == '>':
+            return record_value > value
+        elif operator == '<':
+            return record_value < value
+        elif operator == '>=':
+            return record_value >= value
+        elif operator == '<=':
+            return record_value <= value
+        elif operator == '==':
+            return record_value == value
+        elif operator == '!=':
+            return record_value != value
+        
+        return False
+    
+    initial_count = len(records)
+    filtered_records = [record for record in records if not record_matches(record)]
+    deleted_count = initial_count - len(filtered_records)
+    
+    table_info['data'] = filtered_records
+    metadata[table_name] = table_info
+    
+    if deleted_count > 0:
+        print(f"Удалено {deleted_count} записей из таблицы '{table_name}'")
+    else:
+        print(f"Не найдено записей для удаления в таблице '{table_name}'")
     
     return metadata
