@@ -16,7 +16,7 @@ make project
 poetry run project
 ```
 
-##Запись демонстрации
+## Запись демонстрации
 ```bash
 [![Демонстрация работы СУБД](https://asciinema.org/a/CZgSG3hnkZqrq1pJ.svg)](https://asciinema.org/a/CZgSG3hnkZqrq1pJ)
 ```
