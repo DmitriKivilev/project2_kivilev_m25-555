@@ -7,7 +7,7 @@ Working with metadata files and data validation.
 import os
 import json
 from typing import Dict, Any, Tuple, Optional
-
+from typing import Dict, Any, Tuple, Optional, List
 
 def load_metadata(filepath: str = "db_meta.json") -> Dict[str, Any]:
     """
@@ -84,7 +84,9 @@ def print_help():
     print("<command> create_table <имя_таблицы> <столбец1:тип> <столбец2:тип> .. - создать таблицу")
     print("<command> list_tables - показать список всех таблиц")
     print("<command> drop_table <имя_таблицы> - удалить таблицу")
-    print("<command> insert <имя_таблицы> <столбец1=значение> ... - добавить запись")  # <-- НОВАЯ СТРОКА
+    print("<command> insert <имя_таблицы> <столбец1=значение> ... - добавить запись")
+    print("<command> select <имя_таблицы> [where условие] - показать записи")
+    print("  Примеры: select users, select users where age>25")
     print("<command> exit - выход из программы")
     print("<command> help - справочная информация\n")
 
@@ -128,3 +130,43 @@ def load_table_data(table_name: str, data_dir: str = "data") -> list:
         return []
     except (FileNotFoundError, json.JSONDecodeError):
         return []
+def pretty_print_table(records: List[Dict], table_name: str) -> None:
+    """
+    Pretty print table records.
+    
+    Args:
+        records (List[Dict]): Records to display
+        table_name (str): Name of the table
+    """
+    if not records:
+        print(f"📭 Таблица '{table_name}' пуста")
+        return
+    
+    print(f"\n📋 Данные таблицы '{table_name}':")
+    print("=" * 50)
+    
+    # Get all column names
+    all_keys = set()
+    for record in records:
+        all_keys.update(record.keys())
+    
+    # Order columns: ID first, then alphabetical
+    sorted_keys = sorted(all_keys)
+    if 'ID' in sorted_keys:
+        sorted_keys.remove('ID')
+        sorted_keys = ['ID'] + sorted_keys
+    
+    # Print header
+    header = " | ".join(sorted_keys)
+    print(header)
+    print("-" * len(header))
+    
+    # Print rows
+    for record in records:
+        row = []
+        for key in sorted_keys:
+            value = record.get(key, '')
+            row.append(str(value))
+        print(" | ".join(row))
+    
+    print(f"Всего записей: {len(records)}")

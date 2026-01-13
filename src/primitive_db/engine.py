@@ -6,9 +6,8 @@ The main loop of our database application.
 
 import prompt
 import shlex
-from src.primitive_db.core import create_table, drop_table, list_tables, insert_record
-from src.primitive_db.utils import load_metadata, save_metadata, print_help
-
+from src.primitive_db.core import create_table, drop_table, list_tables, insert_record, select_records
+from src.primitive_db.utils import load_metadata, save_metadata, print_help, pretty_print_table
 
 def run():
     """
@@ -91,9 +90,29 @@ def run():
             elif command == "list_tables":
                 list_tables(metadata)
                 
-            else:
-                print(f"❌ Функции '{command}' нет. Попробуйте снова.")
+            elif command == "select":
+                if len(args) < 2:
+                    print("❌ Ошибка: Используйте: select <имя_таблицы> [where условие]")
+                    continue
                 
+                table_name = args[1]
+                condition = None
+                
+                # Check for "where" keyword
+                if len(args) >= 4 and args[2].lower() == "where":
+                    condition = args[3]
+                elif len(args) >= 3:
+                    # If no "where" but 3+ args, assume condition without keyword
+                    condition = args[2]
+                
+                try:
+                    records = select_records(metadata, table_name, condition)
+                    pretty_print_table(records, table_name)
+                    
+                except ValueError as e:
+                    print(f"❌ {e}") 
+            else:
+                print(f"❌ Функции '{command}' нет. Попробуйте снова.")  
         except KeyboardInterrupt:
             print("\n👋 Прервано пользователем. Выход.")
             break

@@ -199,4 +199,96 @@ def insert_record(metadata: Dict[str, Any], table_name: str, values: List[str]) 
     metadata[table_name] = table_info
     
     print(f'✅ Запись добавлена в таблицу "{table_name}" с ID={new_id}')
+
+def select_records(metadata: Dict[str, Any], table_name: str, condition: str = None) -> List[Dict]:
+    """
+    Select records from a table, optionally with a condition.
+    
+    Args:
+        metadata (Dict): Current database metadata
+        table_name (str): Name of the table
+        condition (str): Optional condition like "age>25"
+        
+    Returns:
+        List[Dict]: List of records matching the condition
+        
+    Raises:
+        ValueError: If table doesn't exist or invalid condition
+    """
+    if table_name not in metadata:
+        raise ValueError(f'Таблица "{table_name}" не существует.')
+    
+    table_info = metadata[table_name]
+    records = table_info.get('data', [])
+    
+    if not condition:
+        return records
+    
+    # Simple condition parsing
+    # Format: "column operator value" like "age>25"
+    import re
+    
+    # Parse condition
+    match = re.match(r'(\w+)([<>=!]+)(.+)', condition)
+    if not match:
+        raise ValueError(f'Некорректное условие: "{condition}". Используйте "столбец оператор значение"')
+    
+    col_name, operator, value_str = match.groups()
+    
+    # Find column type
+    column_types = {name: type for name, type in table_info['columns']}
+    if col_name not in column_types:
+        raise ValueError(f'Столбец "{col_name}" не существует в таблице "{table_name}"')
+    
+    col_type = column_types[col_name]
+    
+    # Convert value based on type
+    try:
+        if col_type == 'int':
+            value = int(value_str)
+        elif col_type == 'bool':
+            value_lower = value_str.lower()
+            value = value_lower in ['true', '1', 'yes', 'да']
+        elif col_type == 'str':
+            # Remove quotes if present
+            if (value_str.startswith('"') and value_str.endswith('"')) or \
+               (value_str.startswith("'") and value_str.endswith("'")):
+                value = value_str[1:-1]
+            else:
+                value = value_str
+        else:
+            raise ValueError(f'Неизвестный тип данных: {col_type}')
+    except ValueError:
+        raise ValueError(f'Неверное значение для столбца "{col_name}" (тип {col_type}): "{value_str}"')
+    
+    # Filter records
+    filtered_records = []
+    for record in records:
+        record_value = record.get(col_name)
+        
+        # Skip if column doesn't exist in this record
+        if col_name not in record:
+            continue
+            
+        # Apply condition
+        match_condition = False
+        if operator == '>':
+            match_condition = record_value > value
+        elif operator == '<':
+            match_condition = record_value < value
+        elif operator == '>=':
+            match_condition = record_value >= value
+        elif operator == '<=':
+            match_condition = record_value <= value
+        elif operator == '==':
+            match_condition = record_value == value
+        elif operator == '!=':
+            match_condition = record_value != value
+        else:
+            raise ValueError(f'Неподдерживаемый оператор: "{operator}"')
+        
+        if match_condition:
+            filtered_records.append(record)
+    
+    return filtered_records
     return metadata
